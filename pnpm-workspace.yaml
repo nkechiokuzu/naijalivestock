@@ -74,6 +74,10 @@ overrides:
   # orval pins js-yaml to an exact version older than the CVE fix (>=4.3.2)
   js-yaml: '4.3.2'
 
+onlyBuiltDependencies:
+  - '@clerk/shared'
+  - esbuild
+
 allowBuilds:
   '@clerk/shared': true
   esbuild: true
