@@ -1,0 +1,1108 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: marketplace
+    description: Public marketplace browsing and listing management
+  - name: account
+    description: Buyer and seller account onboarding
+  - name: messaging
+    description: Buyer-seller conversations and offers
+  - name: transactions
+    description: Escrow transaction tracking and disputes
+  - name: admin
+    description: Verification, dispute, and marketplace administration
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /marketplace/summary:
+    get:
+      operationId: getMarketplaceSummary
+      tags: [marketplace]
+      summary: Get marketplace trust indicators and category counts
+      responses:
+        "200":
+          description: Marketplace overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketplaceSummary"
+  /listings:
+    get:
+      operationId: listListings
+      tags: [marketplace]
+      summary: Search active livestock listings
+      parameters:
+        - name: category
+          in: query
+          schema:
+            $ref: "#/components/schemas/AnimalCategory"
+        - name: location
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: maxPrice
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [newest, price-low, price-high]
+      responses:
+        "200":
+          description: Matching listings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingCollection"
+    post:
+      operationId: createListing
+      tags: [marketplace]
+      summary: Create a listing as an approved seller
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingInput"
+      responses:
+        "201":
+          description: Listing created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        "403":
+          description: Seller verification is required
+  /listings/{listingId}:
+    get:
+      operationId: getListing
+      tags: [marketplace]
+      summary: Get a livestock listing
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Listing details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        "404":
+          description: Listing not found
+    patch:
+      operationId: updateListing
+      tags: [marketplace]
+      summary: Update an owned listing
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingUpdate"
+      responses:
+        "200":
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+    delete:
+      operationId: deleteListing
+      tags: [marketplace]
+      summary: Archive an owned listing
+      parameters:
+        - name: listingId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Listing archived
+  /seller/listings:
+    get:
+      operationId: listMyListings
+      tags: [marketplace]
+      summary: List all listings owned by the signed-in seller
+      responses:
+        "200":
+          description: Seller's listings including sold and archived items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingCollection"
+  /profiles/me:
+    get:
+      operationId: getMyProfile
+      tags: [account]
+      summary: Get the signed-in user's marketplace profile
+      responses:
+        "200":
+          description: Profile, or null before onboarding
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Profile"
+                  - type: "null"
+    put:
+      operationId: saveMyProfile
+      tags: [account]
+      summary: Create or update buyer or seller onboarding details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileInput"
+      responses:
+        "200":
+          description: Saved profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Profile"
+  /verification/phone/start:
+    post:
+      operationId: startPhoneVerification
+      tags: [account]
+      summary: Send a phone verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneVerificationStartInput"
+      responses:
+        "202":
+          description: Verification request accepted by the configured SMS provider
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationStatus"
+        "503":
+          description: SMS provider is not configured
+  /verification/phone/check:
+    post:
+      operationId: checkPhoneVerification
+      tags: [account]
+      summary: Confirm a phone verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PhoneVerificationCheckInput"
+      responses:
+        "200":
+          description: Phone verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationStatus"
+  /verification/seller:
+    get:
+      operationId: getMySellerVerification
+      tags: [account]
+      summary: Get the signed-in seller's verification request
+      responses:
+        "200":
+          description: Seller verification status
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SellerVerification"
+                  - type: "null"
+    post:
+      operationId: submitSellerVerification
+      tags: [account]
+      summary: Submit seller identity documents for review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SellerVerificationInput"
+      responses:
+        "201":
+          description: Verification submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SellerVerification"
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [account]
+      summary: Request a private upload URL for listing or verification evidence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlInput"
+      responses:
+        "200":
+          description: Upload URL and protected object path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+  /storage/uploads/finalize:
+    post:
+      operationId: finalizeUpload
+      tags: [account]
+      summary: Apply public or private access based on the upload purpose
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizeUploadInput"
+      responses:
+        "200":
+          description: Upload access policy applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadFinalization"
+  /conversations:
+    get:
+      operationId: listConversations
+      tags: [messaging]
+      summary: List the signed-in user's conversations
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+    post:
+      operationId: startConversation
+      tags: [messaging]
+      summary: Message a listing seller
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationInput"
+      responses:
+        "201":
+          description: Conversation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "403":
+          description: Phone verification is required
+  /conversations/{conversationId}/messages:
+    get:
+      operationId: listMessages
+      tags: [messaging]
+      summary: List messages in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Conversation messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [messaging]
+      summary: Send a message to the other participant
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+  /conversations/{conversationId}/offers:
+    get:
+      operationId: listConversationOffers
+      tags: [messaging]
+      summary: List offers in a conversation
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Conversation offers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Offer"
+    post:
+      operationId: createOffer
+      tags: [messaging]
+      summary: Make an offer on a listing
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferInput"
+      responses:
+        "201":
+          description: Offer submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+  /offers/{offerId}:
+    patch:
+      operationId: respondToOffer
+      tags: [messaging]
+      summary: Accept or decline an offer
+      parameters:
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferResponseInput"
+      responses:
+        "200":
+          description: Updated offer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Offer"
+  /transactions:
+    get:
+      operationId: listTransactions
+      tags: [transactions]
+      summary: List the signed-in user's transaction records
+      responses:
+        "200":
+          description: Transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+  /transactions/{transactionId}:
+    get:
+      operationId: getTransaction
+      tags: [transactions]
+      summary: Get a transaction record
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+  /transactions/{transactionId}/disputes:
+    get:
+      operationId: getTransactionDispute
+      tags: [transactions]
+      summary: Get the dispute associated with a transaction
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Dispute details or null when no dispute is open
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/Dispute"
+                  - type: "null"
+    post:
+      operationId: openDispute
+      tags: [transactions]
+      summary: Raise a dispute with evidence
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisputeInput"
+      responses:
+        "201":
+          description: Dispute opened
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dispute"
+  /transactions/{transactionId}/delivery:
+    post:
+      operationId: markTransactionDelivered
+      tags: [transactions]
+      summary: Start the buyer's 72-hour receipt confirmation window
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transaction delivery status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "503":
+          description: Escrow payments are not configured
+  /transactions/{transactionId}/receipt:
+    post:
+      operationId: confirmReceipt
+      tags: [transactions]
+      summary: Confirm delivery and request escrow release
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Receipt recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+  /reports:
+    post:
+      operationId: reportMarketplaceUser
+      tags: [transactions]
+      summary: Report a user or suspicious listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FraudReportInput"
+      responses:
+        "201":
+          description: Report received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FraudFlag"
+  /disputes/{disputeId}/response:
+    post:
+      operationId: respondToDispute
+      tags: [transactions]
+      summary: Submit seller evidence in response to a dispute
+      parameters:
+        - name: disputeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisputeResponseInput"
+      responses:
+        "201":
+          description: Dispute response recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dispute"
+  /admin/dashboard:
+    get:
+      operationId: getAdminDashboard
+      tags: [admin]
+      summary: Get marketplace operations summary
+      responses:
+        "200":
+          description: Admin summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminDashboard"
+        "403":
+          description: Admin role required
+  /admin/verifications:
+    get:
+      operationId: listAdminVerifications
+      tags: [admin]
+      summary: List pending seller verifications
+      responses:
+        "200":
+          description: Verification requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SellerVerification"
+  /admin/verifications/{verificationId}:
+    patch:
+      operationId: reviewSellerVerification
+      tags: [admin]
+      summary: Approve or reject a seller verification
+      parameters:
+        - name: verificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationReviewInput"
+      responses:
+        "200":
+          description: Reviewed verification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SellerVerification"
+  /admin/flags:
+    get:
+      operationId: listAdminFlags
+      tags: [admin]
+      summary: List open fraud and safety flags
+      responses:
+        "200":
+          description: Open reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FraudFlag"
+  /admin/flags/{flagId}:
+    patch:
+      operationId: reviewFlag
+      tags: [admin]
+      summary: Mark a report reviewed or dismissed
+      parameters:
+        - name: flagId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FraudFlagReviewInput"
+      responses:
+        "200":
+          description: Reviewed flag
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FraudFlag"
+  /admin/disputes:
+    get:
+      operationId: listAdminDisputes
+      tags: [admin]
+      summary: List open disputes for review
+      responses:
+        "200":
+          description: Disputes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dispute"
+  /admin/disputes/{disputeId}:
+    patch:
+      operationId: resolveDispute
+      tags: [admin]
+      summary: Resolve a dispute based on the original listing and evidence
+      parameters:
+        - name: disputeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DisputeResolutionInput"
+      responses:
+        "200":
+          description: Resolved dispute
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dispute"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+    AnimalCategory:
+      type: string
+      enum: [cattle, goats, sheep, poultry, fish, other]
+    ListingStatus:
+      type: string
+      enum: [active, sold, archived]
+    VerificationState:
+      type: string
+      enum: [not_started, pending, approved, rejected]
+    MarketplaceSummary:
+      type: object
+      required: [activeListings, verifiedSellers, categoryCounts, featuredListings]
+      properties:
+        activeListings:
+          type: integer
+        verifiedSellers:
+          type: integer
+        categoryCounts:
+          type: object
+          additionalProperties:
+            type: integer
+        featuredListings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Listing"
+    ListingSeller:
+      type: object
+      required: [id, name, verified, location]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        verified: { type: boolean }
+        location: { type: string }
+        memberSince: { type: string, format: date-time }
+    Listing:
+      type: object
+      required:
+        - id
+        - category
+        - breed
+        - ageMonths
+        - weightKg
+        - healthStatus
+        - priceNaira
+        - quantity
+        - state
+        - city
+        - fulfillment
+        - photos
+        - seller
+        - featured
+        - sample
+        - status
+        - createdAt
+      properties:
+        id: { type: string }
+        category: { $ref: "#/components/schemas/AnimalCategory" }
+        breed: { type: string }
+        ageMonths: { type: integer, minimum: 0 }
+        weightKg: { type: number, minimum: 0 }
+        healthStatus: { type: string, enum: [healthy, vaccinated, needs_checkup] }
+        priceNaira: { type: integer, minimum: 0 }
+        quantity: { type: integer, minimum: 1 }
+        state: { type: string }
+        city: { type: string }
+        fulfillment: { type: string, enum: [pickup, delivery, both] }
+        photos:
+          type: array
+          items: { type: string }
+        seller: { $ref: "#/components/schemas/ListingSeller" }
+        featured: { type: boolean }
+        sample: { type: boolean }
+        status: { $ref: "#/components/schemas/ListingStatus" }
+        createdAt: { type: string, format: date-time }
+    ListingCollection:
+      type: object
+      required: [listings, total]
+      properties:
+        listings:
+          type: array
+          items: { $ref: "#/components/schemas/Listing" }
+        total: { type: integer }
+    ListingInput:
+      type: object
+      required: [category, breed, ageMonths, weightKg, healthStatus, priceNaira, quantity, state, city, fulfillment, photos]
+      properties:
+        category: { $ref: "#/components/schemas/AnimalCategory" }
+        breed: { type: string, minLength: 1, maxLength: 80 }
+        ageMonths: { type: integer, minimum: 0 }
+        weightKg: { type: number, minimum: 0 }
+        healthStatus: { type: string, enum: [healthy, vaccinated, needs_checkup] }
+        priceNaira: { type: integer, minimum: 1 }
+        quantity: { type: integer, minimum: 1 }
+        state: { type: string, minLength: 2, maxLength: 40 }
+        city: { type: string, minLength: 2, maxLength: 60 }
+        fulfillment: { type: string, enum: [pickup, delivery, both] }
+        photos:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { type: string }
+    ListingUpdate:
+      type: object
+      properties:
+        category: { $ref: "#/components/schemas/AnimalCategory" }
+        breed: { type: string, minLength: 1, maxLength: 80 }
+        ageMonths: { type: integer, minimum: 0 }
+        weightKg: { type: number, minimum: 0 }
+        healthStatus: { type: string, enum: [healthy, vaccinated, needs_checkup] }
+        priceNaira: { type: integer, minimum: 1 }
+        quantity: { type: integer, minimum: 1 }
+        state: { type: string, minLength: 2, maxLength: 40 }
+        city: { type: string, minLength: 2, maxLength: 60 }
+        fulfillment: { type: string, enum: [pickup, delivery, both] }
+        photos:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: { type: string }
+        status: { $ref: "#/components/schemas/ListingStatus" }
+    Profile:
+      type: object
+      required: [userId, role, displayName, phoneVerified, sellerVerification, state, city]
+      properties:
+        userId: { type: string }
+        role: { type: string, enum: [buyer, seller, admin] }
+        displayName: { type: string }
+        phone: { type: ["string", "null"] }
+        phoneVerified: { type: boolean }
+        sellerVerification: { $ref: "#/components/schemas/VerificationState" }
+        state: { type: string }
+        city: { type: string }
+    ProfileInput:
+      type: object
+      required: [role, displayName, phone, state, city]
+      properties:
+        role: { type: string, enum: [buyer, seller] }
+        displayName: { type: string, minLength: 2, maxLength: 80 }
+        phone: { type: string, minLength: 8, maxLength: 24 }
+        state: { type: string, minLength: 2, maxLength: 40 }
+        city: { type: string, minLength: 2, maxLength: 60 }
+    PhoneVerificationStartInput:
+      type: object
+      required: [phone]
+      properties:
+        phone: { type: string, minLength: 8, maxLength: 24 }
+    PhoneVerificationCheckInput:
+      type: object
+      required: [phone, code]
+      properties:
+        phone: { type: string, minLength: 8, maxLength: 24 }
+        code: { type: string, minLength: 4, maxLength: 10 }
+    VerificationStatus:
+      type: object
+      required: [status, message]
+      properties:
+        status: { type: string, enum: [pending, approved, rejected, unavailable] }
+        message: { type: string }
+    SellerVerification:
+      type: object
+      required: [id, userId, status, submittedAt, displayName, state, city]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        status: { $ref: "#/components/schemas/VerificationState" }
+        submittedAt: { type: string, format: date-time }
+        displayName: { type: string }
+        state: { type: string }
+        city: { type: string }
+        reviewNote: { type: ["string", "null"] }
+        documentPath: { type: ["string", "null"] }
+    SellerVerificationInput:
+      type: object
+      required: [legalName, state, city, idType, documentPath]
+      properties:
+        legalName: { type: string, minLength: 2, maxLength: 100 }
+        state: { type: string, minLength: 2, maxLength: 40 }
+        city: { type: string, minLength: 2, maxLength: 60 }
+        idType: { type: string, enum: [nin, voters_card, drivers_license, passport] }
+        documentPath: { type: string, minLength: 1 }
+    UploadUrlInput:
+      type: object
+      required: [name, size, contentType, purpose]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 12000000 }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp, application/pdf, video/mp4] }
+        purpose: { type: string, enum: [listing_photo, identity_document, dispute_evidence] }
+    UploadUrlResponse:
+      type: object
+      required: [uploadURL, objectPath]
+      properties:
+        uploadURL: { type: string }
+        objectPath: { type: string }
+    FinalizeUploadInput:
+      type: object
+      required: [objectPath, purpose]
+      properties:
+        objectPath: { type: string, minLength: 1 }
+        purpose: { type: string, enum: [listing_photo, identity_document, dispute_evidence] }
+    UploadFinalization:
+      type: object
+      required: [objectPath, status]
+      properties:
+        objectPath: { type: string }
+        status: { type: string, enum: [ready] }
+    Conversation:
+      type: object
+      required: [id, listingId, listingBreed, otherParticipantName, lastMessage, updatedAt]
+      properties:
+        id: { type: string }
+        listingId: { type: string }
+        listingBreed: { type: string }
+        otherParticipantName: { type: string }
+        lastMessage: { type: string }
+        updatedAt: { type: string, format: date-time }
+        unreadCount: { type: integer }
+    ConversationInput:
+      type: object
+      required: [listingId, message]
+      properties:
+        listingId: { type: string }
+        message: { type: string, minLength: 1, maxLength: 2000 }
+    Message:
+      type: object
+      required: [id, conversationId, senderId, text, createdAt]
+      properties:
+        id: { type: string }
+        conversationId: { type: string }
+        senderId: { type: string }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+    MessageInput:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 2000 }
+    Offer:
+      type: object
+      required: [id, conversationId, buyerId, amountNaira, quantity, status, createdAt]
+      properties:
+        id: { type: string }
+        conversationId: { type: string }
+        buyerId: { type: string }
+        amountNaira: { type: integer, minimum: 1 }
+        quantity: { type: integer, minimum: 1 }
+        status: { type: string, enum: [pending, accepted, declined, expired] }
+        createdAt: { type: string, format: date-time }
+    OfferInput:
+      type: object
+      required: [amountNaira, quantity]
+      properties:
+        amountNaira: { type: integer, minimum: 1 }
+        quantity: { type: integer, minimum: 1 }
+    OfferResponseInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [accepted, declined] }
+    Transaction:
+      type: object
+      required: [id, listingId, buyerId, sellerId, amountNaira, feeNaira, status, paymentProvider, createdAt]
+      properties:
+        id: { type: string }
+        listingId: { type: string }
+        buyerId: { type: string }
+        sellerId: { type: string }
+        amountNaira: { type: integer }
+        feeNaira: { type: integer }
+        status: { type: string, enum: [payment_setup_required, awaiting_payment, funds_held, in_delivery, receipt_window, disputed, released, refunded] }
+        paymentProvider: { type: string, enum: [unconfigured, stripe, shopify, whop, paystack, flutterwave] }
+        createdAt: { type: string, format: date-time }
+        receiptDeadline: { type: ["string", "null"], format: date-time }
+    Dispute:
+      type: object
+      required: [id, transactionId, listingId, buyerId, sellerId, reason, evidencePaths, status, createdAt]
+      properties:
+        id: { type: string }
+        transactionId: { type: string }
+        listingId: { type: string }
+        buyerId: { type: string }
+        sellerId: { type: string }
+        reason: { type: string }
+        evidencePaths:
+          type: array
+          items: { type: string }
+        sellerResponse: { type: ["string", "null"] }
+        responseEvidencePaths:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [open, under_review, resolved_for_buyer, resolved_for_seller] }
+        resolutionNote: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+    DisputeInput:
+      type: object
+      required: [reason, evidencePaths]
+      properties:
+        reason: { type: string, minLength: 10, maxLength: 2000 }
+        evidencePaths:
+          type: array
+          maxItems: 8
+          items: { type: string }
+    DisputeResponseInput:
+      type: object
+      required: [message, evidencePaths]
+      properties:
+        message: { type: string, minLength: 10, maxLength: 2000 }
+        evidencePaths:
+          type: array
+          maxItems: 8
+          items: { type: string }
+    FraudReportInput:
+      type: object
+      required: [reportedUserId, reason, details]
+      properties:
+        reportedUserId: { type: string }
+        listingId: { type: ["string", "null"] }
+        reason: { type: string, enum: [stolen_photos, duplicate_listing, unsafe_animals, buyer_misconduct, seller_misconduct, other] }
+        details: { type: string, minLength: 10, maxLength: 2000 }
+    FraudFlag:
+      type: object
+      required: [id, reportedUserId, reason, details, status, createdAt]
+      properties:
+        id: { type: string }
+        reportedUserId: { type: string }
+        reporterId: { type: ["string", "null"] }
+        listingId: { type: ["string", "null"] }
+        reason: { type: string, enum: [stolen_photos, duplicate_listing, unsafe_animals, buyer_misconduct, seller_misconduct, other] }
+        details: { type: string }
+        status: { type: string, enum: [open, reviewed, dismissed] }
+        createdAt: { type: string, format: date-time }
+    FraudFlagReviewInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [reviewed, dismissed] }
+    VerificationReviewInput:
+      type: object
+      required: [status, reviewNote]
+      properties:
+        status: { type: string, enum: [approved, rejected] }
+        reviewNote: { type: string, minLength: 3, maxLength: 1000 }
+    DisputeResolutionInput:
+      type: object
+      required: [decision, resolutionNote]
+      properties:
+        decision: { type: string, enum: [resolved_for_buyer, resolved_for_seller] }
+        resolutionNote: { type: string, minLength: 3, maxLength: 2000 }
+    AdminDashboard:
+      type: object
+      required: [activeListings, pendingVerifications, openDisputes, flaggedAccounts, totalTransactions]
+      properties:
+        activeListings: { type: integer }
+        pendingVerifications: { type: integer }
+        openDisputes: { type: integer }
+        flaggedAccounts: { type: integer }
+        totalTransactions: { type: integer }
+

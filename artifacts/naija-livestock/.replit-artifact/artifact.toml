@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "NaijaLivestock"
+description = "A trusted Nigerian marketplace connecting livestock buyers and sellers, with browsing, structured listings, seller verification, secure messaging, and transaction workflows."
+version = "1.0.0"
+id = "artifacts/naija-livestock"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22758
+
+[services.development]
+run = "pnpm --filter @workspace/naija-livestock run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/naija-livestock", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/naija-livestock/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22758"
+BASE_PATH = "/"

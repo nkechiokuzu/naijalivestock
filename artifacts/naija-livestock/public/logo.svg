@@ -1,0 +1,7 @@
+<svg width="196" height="48" viewBox="0 0 196 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="2" width="44" height="44" rx="14" fill="#245C43"/>
+  <path d="M33 10C23 10 14 14 12 22c-2 7 3 12 9 11 8-1 12-10 12-23Z" fill="#E6C776"/>
+  <path d="M12 35c4-7 9-12 17-17" stroke="#FFF9ED" stroke-width="2.7" stroke-linecap="round"/>
+  <text x="55" y="32" fill="#18372E" font-family="Manrope, sans-serif" font-size="22" font-weight="800" letter-spacing="-0.8">naija</text>
+  <text x="109" y="32" fill="#738A63" font-family="Manrope, sans-serif" font-size="22" font-weight="600" letter-spacing="-0.8">livestock</text>
+</svg>

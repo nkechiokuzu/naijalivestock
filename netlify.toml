@@ -1,0 +1,28 @@
+# ==============================================================================
+# Netlify Configuration for NaijaLivestock (naijalivestock.com)
+# Frontend Static SPA Deployment + API Reverse Proxy
+# ==============================================================================
+
+[build]
+  # Build from repo root so pnpm workspace packages resolve correctly
+  base = "."
+  publish = "artifacts/naija-livestock/dist/public"
+  command = "pnpm --filter @workspace/naija-livestock run build"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# 1. Reverse-proxy /api requests to Render backend
+# Once your Render API service is deployed, update the 'to' URL below with your Render app URL
+# (e.g. https://naijalivestock-api.onrender.com/api/:splat)
+[[redirects]]
+  from = "/api/*"
+  to = "https://naijalivestock-api.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# 2. SPA client-side history routing fallback (Wouter)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

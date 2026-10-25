@@ -1,0 +1,37 @@
+# ==============================================================================
+# Render Blueprint Specification for NaijaLivestock (naijalivestock.com)
+# Backend Express API Web Service (Free Tier)
+# ==============================================================================
+services:
+  - type: web
+    name: naijalivestock-api
+    runtime: node
+    plan: free
+    region: frankfurt # Low latency to West Africa / Nigeria
+    branch: main
+    buildCommand: pnpm --filter @workspace/api-server run build
+    startCommand: pnpm --filter @workspace/api-server run start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: LOCAL_UPLOAD_STORAGE
+        value: "true"
+      - key: LOCAL_UPLOAD_DIR
+        value: .local-uploads
+      - key: DATABASE_URL
+        sync: false # Connect your free Neon.tech or Supabase PostgreSQL connection string
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false # From your Clerk dashboard (pk_live_... or pk_test_...)
+      - key: CLERK_SECRET_KEY
+        sync: false # From your Clerk dashboard (sk_live_... or sk_test_...)
+      - key: MARKETPLACE_ADMIN_IDS
+        sync: false # Clerk User IDs for Ike Okuzu and Mbaja Chizoba
+      - key: ALLOW_PILOT_VERIFICATION
+        value: "true"
+      - key: PILOT_FARMS_LIMIT
+        value: "50"
+      - key: LOG_LEVEL
+        value: info
